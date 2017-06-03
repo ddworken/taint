@@ -225,10 +225,12 @@ def testMypyExamples():
         check_output(['mypy', 'examples/taint_simpleFlaskWebsite.py'])
         assert False  # mypy should have an exit code of 1
     except CalledProcessError as e:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"*10)
-        print(mypyErrorString1 % b'greetingStr')
-        print(e.output)
         assert mypyErrorString1 % b'greetingStr' in e.output
+    try:
+        check_output(['mypy', 'examples/taint_objects.py'])
+        assert False # mypy should have an exit code of 1
+    except CalledProcessError as e:
+        assert mypyErrorString1.replace(b'Any', b'MyTaintableObject') % b'out' in e.output
 
 if __name__ == '__main__':
     print(type(Tainted))

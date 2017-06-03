@@ -124,14 +124,14 @@ def taint(*args, **kwargs) -> Callable[[Callable[..., T]], Callable[..., Tainted
         return inner
     return taintDecorator
 
-def sanitize(*args, **kwargs) -> Callable[[Callable[[T], T]], Callable[[Union[Tainted[T], Untainted[T], T]], Union[Untainted[T], T]]]:
+def sanitize(*args, **kwargs) -> Callable[[Callable[[T], T]], Callable[[Union[Tainted[T], Untainted[T], T]], Untainted[T]]]:
     if 'useOrig' in kwargs.keys() and kwargs['useOrig']:
         box = UntaintedData
     else:
         box = Untainted
-    def sanitizeDecorator(func: Callable[[T], T]) -> Callable[[Union[Tainted[T], Untainted[T], T]], Union[Untainted[T], T]]:
+    def sanitizeDecorator(func: Callable[[T], T]) -> Callable[[Union[Tainted[T], Untainted[T], T]], Untainted[T]]:
         """Decorate a function to specify that given tainted data it returns untainted data"""
-        def inner(data: Union[Tainted[T], Untainted[T], T]) -> Union[Untainted[T], T]:
+        def inner(data: Union[Tainted[T], Untainted[T], T]) -> Untainted[T]:
             if isinstance(data, TaintedData) or isinstance(data, UntaintedData):
                 res = func(data.data)
             else:
