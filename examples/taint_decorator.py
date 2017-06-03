@@ -1,18 +1,21 @@
 from taint import taint, sanitize, sink
 import os
 
-@taint
+@taint()
 def myInput():
     return input("Enter dir: ")
 
-@sanitize
+@sanitize()
 def mySanitize(input):
     return input.replace('`', 'BACKTICK')
 
-@sink
+@sink()
 def mySink(data):
     os.system('ls ' + data)
 
 if __name__ == '__main__':
+    i = myInput()
+    s = mySanitize(i)
+    mySink(s)
     mySink(mySanitize(myInput()))
     mySink(myInput())

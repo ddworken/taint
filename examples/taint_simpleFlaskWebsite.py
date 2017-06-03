@@ -6,10 +6,10 @@ app = Flask(__name__)
 def main() -> str:
     return greetingStr(getName(request))
 
-@taint
+@taint()
 def getName(request):
     return request.args.get('user')
 
-@sink
+@sink()
 def greetingStr(username):
     return 'Hello %s!' % username 

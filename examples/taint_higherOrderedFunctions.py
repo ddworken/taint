@@ -10,9 +10,9 @@ def mySanitize(input):
 def mySink(data):
     os.system('ls ' + data)
 
-tMyInput = taint(myInput)
-tMySanitize = sanitize(mySanitize)
-tMySink = sink(mySink)
+tMyInput = taint()(myInput)
+tMySanitize = sanitize()(mySanitize)
+tMySink = sink()(mySink)
 
 if __name__ == '__main__':
     tMySink(tMySanitize(tMyInput()))
