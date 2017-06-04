@@ -203,6 +203,18 @@ def testTaintBoxGen():
     assert u._taintBoxGen("other")[1] == "other"
     assert u._taintBoxGen("other")[0]("example").data == "example"
 
+def testGetItem():
+    u = UntaintedData("word1 word2")
+    t = TaintedData([0, 1, 2, 3, 4, 5])
+    assert isinstance(u[0], UntaintedData)
+    assert isinstance(t[0], TaintedData)
+    assert isinstance(u[0:2], UntaintedData)
+    assert isinstance(t[0:2], TaintedData)  # TODO: Make it so it returns a list of tainted data rather than tainted data containing a list
+    assert u[0] == "w"
+    assert t[0] == 0
+    assert u[0:2] == "wo"
+    assert t[0:2] == [0, 1]
+
 def testMypyExamples():
     mypyErrorString1 = b"error: Argument 1 to \"%s\" has incompatible type TaintedData[Any]; expected UntaintedData[Any]"
     mypyErrorString2 = b"error: Argument 1 has incompatible type TaintedData[Any]; expected UntaintedData[Any]"
