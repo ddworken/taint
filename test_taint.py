@@ -1,12 +1,9 @@
 #!/bin/python
 
 from taint import taint, sanitize, sink, Tainted, Untainted, TaintedData, UntaintedData
-#from taint import TaintedData as Tainted
-#from taint import UntaintedData as Untainted
-#from taint import Tainted as TaintedIdentity
-#from taint import Untainted as UntaintedIdentity
 from subprocess import CalledProcessError, check_output
 from typing import get_type_hints
+from multiprocessing import Pool
 
 def testArithOperators():
     u = UntaintedData(2)
@@ -150,7 +147,6 @@ def testSanitizeDecorator():
     assert isinstance(taggedSanitizeOrig(UntaintedData(" ")), UntaintedData)
     assert isinstance(taggedSanitizeOrig(" "), UntaintedData)
     assert isinstance(taggedSanitizeIdentity(" "), str)
-    print(untaggedSanitize(TaintedData(" ")))
     assert isinstance(untaggedSanitize(TaintedData(" ")), TaintedData)
     assert isinstance(untaggedSanitize(UntaintedData(" ")), UntaintedData)
     assert isinstance(untaggedSanitize(" "), str)
@@ -211,26 +207,15 @@ def testMypyExamples():
     mypyErrorString1 = b"error: Argument 1 to \"%s\" has incompatible type TaintedData[Any]; expected UntaintedData[Any]"
     mypyErrorString2 = b"error: Argument 1 has incompatible type TaintedData[Any]; expected UntaintedData[Any]"
 
-    try:
-        check_output(['mypy', 'examples/taint_decorator.py'])
-        assert False  # mypy should have an exit code of 1
-    except CalledProcessError as e:
-        assert mypyErrorString1 % b'mySink' in e.output
-    try:
-        check_output(['mypy', 'examples/taint_higherOrderedFunctions.py'])
-        assert False  # mypy should have an exit code of 1
-    except CalledProcessError as e:
-        assert mypyErrorString2 in e.output
-    try:
-        check_output(['mypy', 'examples/taint_simpleFlaskWebsite.py'])
-        assert False  # mypy should have an exit code of 1
-    except CalledProcessError as e:
-        assert mypyErrorString1 % b'greetingStr' in e.output
-    try:
-        check_output(['mypy', 'examples/taint_objects.py'])
-        assert False # mypy should have an exit code of 1
-    except CalledProcessError as e:
-        assert mypyErrorString1.replace(b'Any', b'MyTaintableObject') % b'out' in e.output
+    def runMypyTest(file, errorStr):
+        try:
+            check_output(['mypy', file])
+            assert False # mypy should have an exit code of 1
+        except CalledProcessError as e:
+            assert errorStr in e.output
 
-if __name__ == '__main__':
-    print(type(Tainted))
+    runMypyTest('examples/taint_decorator.py', mypyErrorString1 % b'mySink')
+    runMypyTest('examples/taint_higherOrderedFunctions.py', mypyErrorString2)
+    runMypyTest('examples/taint_simpleFlaskWebsite.py', mypyErrorString1 % b'greetingStr')
+    runMypyTest('examples/taint_objects.py', mypyErrorString1.replace(b'Any', b'MyTaintableObject') % b'out')
+    runMypyTest('examples/taint_stringOps.py', mypyErrorString1.replace(b'Any', b'str') % b'mySink')

@@ -37,11 +37,11 @@ class TaintTrackingBox(Generic[T]):
         if isinstance(op, tuple):
             name, revName = op
             # Note that these are boxed
-            exec("def %s(self, other: 'Union[T, UntaintedOrig[T], TaintedOrig[T]]') -> 'Union[Untainted[T], Tainted[T]]':\n\tboxer, val = self._taintBoxGen(other)\n\tfirst=self.data.%s(val)\n\tif first != NotImplemented:\n\t\treturn boxer(first)\n\telse:\n\t\treturn boxer(val.%s(self.data))" % (name, name, name))
-            exec("def %s(self, other: 'Union[T, UntaintedOrig[T], TaintedOrig[T]]') -> 'Union[Untainted[T], Tainted[T]]':\n\treturn self.%s(other)" % (revName, name))
+            exec("def %s(self, other: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Union[Untainted[T], Tainted[T]]':\n\tboxer, val = self._taintBoxGen(other)\n\tfirst=self.data.%s(val)\n\tif first != NotImplemented:\n\t\treturn boxer(first)\n\telse:\n\t\treturn boxer(val.%s(self.data))" % (name, name, name))
+            exec("def %s(self, other: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Union[Untainted[T], Tainted[T]]':\n\treturn self.%s(other)" % (revName, name))
         else:
             # Note that these are not boxed
-            exec("def %s(self, other: 'Union[T, UntaintedOrig[T], TaintedOrig[T]]') -> 'Union[Untainted[T], Tainted[T]]':\n\t_, val = self._taintBoxGen(other)\n\treturn self.data.%s(val)" % (op, op))
+            exec("def %s(self, other: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Union[Untainted[T], Tainted[T]]':\n\t_, val = self._taintBoxGen(other)\n\treturn self.data.%s(val)" % (op, op))
 
     # List of unary operators that do not go through __getattr__
     # TODO: This list is likely incomplete
@@ -54,8 +54,11 @@ class TaintTrackingBox(Generic[T]):
 
     for name in unaryOps:
         # Note that these are not boxed
-        exec("def %s(self) -> 'Union[UntaintedOrig[T], TaintedOrig[T]]':\n\treturn self.data.%s()" % (name, name))
-        
+        exec("def %s(self) -> 'Union[UntaintedData[T], TaintedData[T]]':\n\treturn self.data.%s()" % (name, name))
+
+    def __getitem__(self, item):
+        raise NotImplementedError()
+
     def _taintBoxGen(self, data: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Tuple[Callable[[T], Union[UntaintedData[T], TaintedData[T]]], T]':
         raise NotImplementedError()
         
@@ -73,6 +76,19 @@ class UntaintedData(TaintTrackingBox[T]):
     def __init__(self, data: T) -> None:
         self.data = data
 
+    def __getitem__(self, item) -> 'UntaintedData[T]':
+        res = self.data.__getitem__(item)  # type: ignore
+        return self._taintBoxGen(self)[0](res)
+
+    @overload # type: ignore
+    # Honestly not sure why mypy needs this type: ignore
+    def _taintBoxGen(self, data: 'UntaintedData[T]') -> 'Tuple[Callable[[T], UntaintedData[T]], T]':
+        ...
+
+    @overload
+    def _taintBoxGen(self, data: 'TaintedData[T]') -> 'Tuple[Callable[[T], TaintedData[T]], T]':
+        ...
+
     def _taintBoxGen(self, data: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Tuple[Callable[[T], Union[UntaintedData[T], TaintedData[T]]], T]':
         if isinstance(data, TaintedData):
             return lambda d: TaintedData(d), data.data
@@ -89,7 +105,11 @@ class TaintedData(TaintTrackingBox[T]):
     def __init__(self, data: T) -> None:
         self.data = data
 
-    def _taintBoxGen(self, data: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Tuple[Callable[[T], Union[UntaintedData[T], TaintedData[T]]], T]':
+    def __getitem__(self, item) -> 'TaintedData[T]':
+        res = self.data.__getitem__(item)  # type: ignore
+        return self._taintBoxGen(self)[0](res)
+
+    def _taintBoxGen(self, data: 'Union[T, UntaintedData[T], TaintedData[T]]') -> 'Tuple[Callable[[T], TaintedData[T]], T]':
         if isinstance(data, TaintedData):
             return lambda d: TaintedData(d), data.data
         else:
